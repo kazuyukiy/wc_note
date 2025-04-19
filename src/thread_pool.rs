@@ -83,21 +83,12 @@ impl Worker {
 
             match message {
                 Message::NewJob(job) => {
-                    // info_span!();
                     let _span_get = info_span!("WK", id).entered();
-                    // info!("Worker {} executing", id);
-                    // info!("job starting");
-                    // println!("  (worker {} got a job: executing.)", id);
-
                     job();
-
-                    // info!("worker {} executed", id);
                     info!("job finished");
                 }
                 Message::Terminate => {
-                    // println!("Worker {} was told to terminate.", id);
                     info!("Worker {} was told to terminate.", id);
-
                     break;
                 }
             }

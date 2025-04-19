@@ -23,13 +23,10 @@ pub fn handle_stream(stream: &mut TcpStream, stor_root: &str) -> Result<Vec<u8>,
     };
 
     let method = http_request.method();
+    info!("{}:{}", method, http_request.path());
 
     if method == "GET" {
         let _span_get = info_span!("GET").entered();
-        info!("{}", http_request.path());
-
-        // "/wc_top.html"
-        // "/wc.js", "/wc.css", "/favicon.ico"
         return handle_get(&http_request, stor_root).or(Err("".to_string()));
     }
 

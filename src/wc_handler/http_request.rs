@@ -15,23 +15,13 @@ impl HttpRequest {
     pub fn from(stream: &mut TcpStream) -> Result<HttpRequest, ()> {
         let stream_data = stream_read(stream);
         // let stream_data = stream_read_timeout(stream);
-        // let stream_data = stream_read_to_end(stream);
-
-        // DBG
-        // info!("stream_data.len: {}", stream_data.len());
-
         let mut headers = [httparse::EMPTY_HEADER; 64];
         // let mut headers = [httparse::EMPTY_HEADER; 128];
         let mut request = httparse::Request::new(&mut headers);
 
         let body_offset = match request.parse(&stream_data) {
             Ok(s) => match s {
-                httparse::Status::Complete(l) => {
-                    // DBG
-                    // info!("httparse::Status::Complete");
-                    // info!("body_offset: {}", l);
-                    Some(l)
-                }
+                httparse::Status::Complete(l) => Some(l),
                 httparse::Status::Partial => {
                     // DBG
                     info!("httparse::Status::Partial");
@@ -43,9 +33,6 @@ impl HttpRequest {
                 return Err(());
             }
         };
-
-        // DBG
-        // info!("headers: {:?}", &headers);
 
         // request.path
         let path = match request.path {
@@ -94,18 +81,6 @@ impl HttpRequest {
             let body = stream_data[body_offset.unwrap()..].to_vec();
             http_request.body.replace(body);
         };
-
-        // DBG
-        // if let Some(v) = content_length(&request) {
-        //     info!("Content-Length: {}", v);
-        // }
-        // if let Some(v) = head_value(&request, "Content-Length") {
-        //     // let i: usize = v.into();
-        //     let v_str = std::str::from_utf8(v).unwrap();
-        //     let v_usize = usize::from_str_radix(&v_str, 10).unwrap();
-        //     info!("Content-Length: {}", v_usize);
-        // }
-
         Ok(http_request)
     }
 
@@ -148,67 +123,77 @@ impl HttpRequest {
     }
 }
 
-// fn stream_read_to_end(stream: &mut TcpStream) -> Vec<u8> {
-//     // This function read some data some times.
-//     // Some times reads its length is zero.
-
-//     // DBG
-//     info!("fn stream_read_to_end");
-
-//     // const MESSAGE_SIZE: usize = 5;
-//     // const MESSAGE_SIZE: usize = 1024;
-//     // let mut rx_bytes = [0u8; MESSAGE_SIZE];
-//     let mut stream_data: Vec<u8> = vec![];
-
-//     loop {
-//         info!("loop one");
-//         match stream.read_to_end(&mut stream_data) {
-//             Ok(_) => break,
-//             Err(e) => {
-//                 error!("{:?}", e);
-//                 break;
-//             }
-//         }
-//     }
-
-//     // DBG
-//     info!("stream_read_to_end finito");
-
-//     stream_data
-// }
-
+// copied to stream_read02 for debug, return it stream_read02to stream_read to rewind.
 fn stream_read(stream: &mut TcpStream) -> Vec<u8> {
     // const MESSAGE_SIZE: usize = 5;
     // const MESSAGE_SIZE: usize = 1024;
 
-    // 1024 can not get body contents in most times, seldom cuccess.
+    // 1024 can not get body contents in most times, seldom success.
     // 64 can get bodys almost all time.
     // I think reading loop should be slow enough to recieve much data for MESSAGE_SIZE full fill.
-    const MESSAGE_SIZE: usize = 64;
-    // const MESSAGE_SIZE: usize = 512;
+    // 64, some page gets error to get wc.js, 512 does not.
+    // const MESSAGE_SIZE: usize = 64;
+
+    // 64, some page gets error to get wc.js, 512 does not.
+    const MESSAGE_SIZE: usize = 512;
+
     // const MESSAGE_SIZE: usize = 1024;
     let mut rx_bytes = [0u8; MESSAGE_SIZE];
     let mut stream_data: Vec<u8> = vec![];
 
-    // DBG
-    // info!("loop in");
-
     // if let Some(v) = content_length(&request) {}
+
+    loop {
+        // It reads some data some times.
+        // Some times reads its length is zero.
+        // match stream.read_to_end(&mut stream_data) {}
+        match stream.read(&mut rx_bytes) {
+            Ok(bytes_read) => {
+                stream_data.extend_from_slice(&rx_bytes[..bytes_read]);
+                if bytes_read < MESSAGE_SIZE {
+                    break;
+                }
+            }
+            Err(e) => {
+                error!("stream_read: {:?}", e);
+                break;
+            }
+        }
+    }
+    stream_data
+}
+
+fn _stream_read_timeout(stream: &mut TcpStream) -> Vec<u8> {
+    // const MESSAGE_SIZE: usize = 5;
+    const MESSAGE_SIZE: usize = 1024;
+    let mut rx_bytes = [0u8; MESSAGE_SIZE];
+    let mut stream_data: Vec<u8> = vec![];
+
+    // DBG
+    info!("fn stream_read_timeout");
+
+    let _r = stream.set_read_timeout(Some(std::time::Duration::new(0, 5000)));
+
+    // DBG
+    // info!("read_timeout: {:?}", stream.read_timeout());
+
+    // DBG
+    info!("loop in");
 
     loop {
         match stream.read(&mut rx_bytes) {
             Ok(bytes_read) => {
-                // info!("stream.read : {} bytes", bytes_read);
+                info!("stream.read: {} bytes", bytes_read);
 
                 stream_data.extend_from_slice(&rx_bytes[..bytes_read]);
 
-                // if bytes_read == 0 {
-                //     break;
-                // }
-
-                if bytes_read < MESSAGE_SIZE {
+                if bytes_read == 0 {
                     break;
                 }
+
+                // if bytes_read < MESSAGE_SIZE {
+                //     break;
+                // }
             }
 
             Err(e) => {
@@ -219,56 +204,10 @@ fn stream_read(stream: &mut TcpStream) -> Vec<u8> {
     }
 
     // DBG
-    // info!("loop out");
+    info!("loop out");
 
     stream_data
 }
-
-// fn stream_read_timeout(stream: &mut TcpStream) -> Vec<u8> {
-//     // const MESSAGE_SIZE: usize = 5;
-//     const MESSAGE_SIZE: usize = 1024;
-//     let mut rx_bytes = [0u8; MESSAGE_SIZE];
-//     let mut stream_data: Vec<u8> = vec![];
-
-//     // DBG
-//     info!("fn stream_read_timeout");
-
-//     let _r = stream.set_read_timeout(Some(std::time::Duration::new(0, 5000)));
-
-//     // DBG
-//     // info!("read_timeout: {:?}", stream.read_timeout());
-
-//     // DBG
-//     info!("loop in");
-
-//     loop {
-//         match stream.read(&mut rx_bytes) {
-//             Ok(bytes_read) => {
-//                 info!("stream.read: {} bytes", bytes_read);
-
-//                 stream_data.extend_from_slice(&rx_bytes[..bytes_read]);
-
-//                 if bytes_read == 0 {
-//                     break;
-//                 }
-
-//                 // if bytes_read < MESSAGE_SIZE {
-//                 //     break;
-//                 // }
-//             }
-
-//             Err(e) => {
-//                 error!("stream_read: {:?}", e);
-//                 break;
-//             }
-//         }
-//     }
-
-//     // DBG
-//     info!("loop out");
-
-//     stream_data
-// }
 
 fn head_value<'a>(request: &'a httparse::Request, name: &str) -> Option<&'a [u8]> {
     match request.headers.iter().find(|&&h| h.name == name) {

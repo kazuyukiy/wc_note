@@ -8,5 +8,6 @@ fn main() {
     let page_root_path = "./pages";
 
     let capa = 4;
+    // let capa = 10;
     let _ = wc_note::wc_note(addr, page_root_path, capa);
 }

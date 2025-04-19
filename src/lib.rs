@@ -21,12 +21,7 @@ mod wc_handler;
 pub fn wc_note(addr: &str, stor_root: &str, capa: usize) -> Result<()> {
     tracing_subscriber::fmt::init();
 
-    // let page_top_path = "/wc_top.html";
-
-    // let page_top_path = "/page_test.html";
     // let page_top_path = "/Computing/computing_index.html";
-
-    // let mut page_test = wc_handler::page::Page::new(stor_root, page_top_path);
     // let mut page_test = wc_handler::page::Page::new(stor_root, page_top_path);
     // info!("page_test:{}", page_test.file_path());
     // page_test.file_backup_delete();
