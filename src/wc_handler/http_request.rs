@@ -1,3 +1,4 @@
+// use std::io::BufRead;
 use std::io::Read;
 use std::net::TcpStream;
 // use tracing::info; //  event, instrument, span, Level
@@ -36,7 +37,13 @@ impl HttpRequest {
 
         // request.path
         let path = match request.path {
+            // Some(path) => path.to_string(),
+            // DBG
             Some(path) => path.to_string(),
+            // {
+            //     println!("path:{}", path);
+            //     path.to_string()
+            // }
             None => return Err(()),
         };
 
@@ -123,8 +130,62 @@ impl HttpRequest {
     }
 }
 
-// copied to stream_read02 for debug, return it stream_read02to stream_read to rewind.
+// const MESSAGE_SIZE: usize = 512;
+// const MESSAGE_SIZE: usize = 5;
+// const MESSAGE_SIZE: usize = 10;
+const MESSAGE_SIZE: usize = 128;
+// const MESSAGE_SIZE: usize = 1024;
+
+// 1024 can not get body contents in most times, seldom success.
+// 64 can get bodys almost all time.
+// I think reading loop should be slow enough to recieve much data for MESSAGE_SIZE full fill.
+// 64, some page gets error to get wc.js, 512 does not.
+// const MESSAGE_SIZE: usize = 64;
+
+// 64, some page gets error to get wc.js, 512 does not.
+// const MESSAGE_SIZE: usize = 512;
+
+// const MESSAGE_SIZE: usize = 1024;
+
 fn stream_read(stream: &mut TcpStream) -> Vec<u8> {
+    // let _r = stream.set_read_timeout(None);
+
+    let mut rx_bytes = [0u8; MESSAGE_SIZE];
+    let mut stream_data: Vec<u8> = vec![];
+
+    // DBG
+    // print!("\nstream_read start ");
+    // info!("stream_read");
+
+    loop {
+        // It reads some data some times.
+        // Some times reads its length is zero.
+        // match stream.read_to_end(&mut stream_data) {}
+        match stream.read(&mut rx_bytes) {
+            Ok(bytes_read) => {
+                stream_data.extend_from_slice(&rx_bytes[..bytes_read]);
+
+                // DBG
+                // print!(",{}", bytes_read);
+
+                if bytes_read < MESSAGE_SIZE {
+                    break;
+                }
+            }
+            Err(e) => {
+                error!("stream_read: {:?}", e);
+                break;
+            }
+        }
+    }
+    // DBG
+    // println!(" stream_read end");
+
+    stream_data
+}
+
+// copied to stream_read02 for debug, return it stream_read02to stream_read to rewind.
+fn _stream_read02(stream: &mut TcpStream) -> Vec<u8> {
     // const MESSAGE_SIZE: usize = 5;
     // const MESSAGE_SIZE: usize = 1024;
 
